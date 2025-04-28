@@ -1,0 +1,8 @@
+# Helm Repositories Configuration
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ingress-nginx-repo.yaml
+  - jetstack-repo.yaml
+  - prometheus-community-repo.yaml
+  - bitnami-repo.yaml

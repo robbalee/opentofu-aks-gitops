@@ -1,0 +1,29 @@
+# OpenTofu Files
+.terraform/
+*.tfstate
+*.tfstate.backup
+*.tfvars
+.terraform.lock.hcl
+tfplan
+crash.log
+
+# Local .terraform directories
+**/.terraform/*
+
+# Secret files
+*.pem
+*.key
+
+# Local configuration files
+.vscode/
+.idea/
+
+# Flux generated files
+.flux.yaml
+
+# OS specific files
+.DS_Store
+Thumbs.db
+
+# Log files
+*.log

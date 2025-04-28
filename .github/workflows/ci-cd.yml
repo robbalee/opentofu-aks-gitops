@@ -1,0 +1,137 @@
+name: OpenTofu AKS GitOps CI/CD
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'infrastructure/**'
+      - 'kubernetes/**'
+      - '.github/workflows/**'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'infrastructure/**'
+      - 'kubernetes/**'
+      - '.github/workflows/**'
+  workflow_dispatch:
+
+env:
+  TF_VERSION: '1.6.0'
+  ARM_CLIENT_ID: ${{ secrets.ARM_CLIENT_ID }}
+  ARM_CLIENT_SECRET: ${{ secrets.ARM_CLIENT_SECRET }}
+  ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
+  ARM_TENANT_ID: ${{ secrets.ARM_TENANT_ID }}
+  FLUX_VERSION: '2.2.3'
+
+jobs:
+  validate:
+    name: Validate Infrastructure
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup OpenTofu
+        uses: opentofu/setup-opentofu@v1
+        with:
+          tofu_version: ${{ env.TF_VERSION }}
+
+      - name: OpenTofu Format Check
+        run: |
+          cd infrastructure
+          tofu fmt -check -recursive
+
+      - name: Initialize OpenTofu
+        run: |
+          cd infrastructure
+          tofu init -backend=false
+
+      - name: Validate OpenTofu
+        run: |
+          cd infrastructure
+          tofu validate
+
+      - name: Validate Kubernetes Manifests
+        run: |
+          curl -s https://fluxcd.io/install.sh | sudo FLUX_VERSION=${{ env.FLUX_VERSION }} bash
+          find kubernetes -type f -name "*.yaml" | xargs -I{} flux validate {}
+
+  plan:
+    name: Plan Infrastructure Changes
+    runs-on: ubuntu-latest
+    needs: validate
+    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
+    strategy:
+      matrix:
+        environment: [dev, staging, prod]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup OpenTofu
+        uses: opentofu/setup-opentofu@v1
+        with:
+          tofu_version: ${{ env.TF_VERSION }}
+
+      - name: OpenTofu Init
+        run: |
+          cd infrastructure/environments/${{ matrix.environment }}
+          tofu init \
+            -backend-config="resource_group_name=${{ secrets.TFSTATE_RG }}" \
+            -backend-config="storage_account_name=${{ secrets.TFSTATE_STORAGE_ACCOUNT }}" \
+            -backend-config="container_name=tfstate" \
+            -backend-config="key=${{ matrix.environment }}.tfstate" \
+            -backend-config="access_key=${{ secrets.TFSTATE_ACCESS_KEY }}"
+
+      - name: OpenTofu Plan
+        run: |
+          cd infrastructure/environments/${{ matrix.environment }}
+          tofu plan -out=tfplan
+          tofu show -no-color tfplan > tfplan.txt
+
+      - name: Upload Plan
+        uses: actions/upload-artifact@v3
+        with:
+          name: tfplan-${{ matrix.environment }}
+          path: infrastructure/environments/${{ matrix.environment }}/tfplan
+
+  apply:
+    name: Apply Infrastructure Changes
+    runs-on: ubuntu-latest
+    needs: [validate, plan]
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    strategy:
+      matrix:
+        environment: [dev, staging, prod]
+    environment: ${{ matrix.environment }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup OpenTofu
+        uses: opentofu/setup-opentofu@v1
+        with:
+          tofu_version: ${{ env.TF_VERSION }}
+
+      - name: Download Plan
+        uses: actions/download-artifact@v3
+        with:
+          name: tfplan-${{ matrix.environment }}
+          path: infrastructure/environments/${{ matrix.environment }}
+
+      - name: OpenTofu Init
+        run: |
+          cd infrastructure/environments/${{ matrix.environment }}
+          tofu init \
+            -backend-config="resource_group_name=${{ secrets.TFSTATE_RG }}" \
+            -backend-config="storage_account_name=${{ secrets.TFSTATE_STORAGE_ACCOUNT }}" \
+            -backend-config="container_name=tfstate" \
+            -backend-config="key=${{ matrix.environment }}.tfstate" \
+            -backend-config="access_key=${{ secrets.TFSTATE_ACCESS_KEY }}"
+
+      - name: OpenTofu Apply
+        run: |
+          cd infrastructure/environments/${{ matrix.environment }}
+          tofu apply -auto-approve tfplan
