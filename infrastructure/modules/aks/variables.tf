@@ -52,14 +52,14 @@ variable "default_node_pool_vm_size" {
 
 variable "additional_node_pools" {
   description = "Additional node pools to create"
-  type        = map(object({
+  type = map(object({
     name       = string
     vm_size    = string
     node_count = number
     taints     = list(string)
     labels     = map(string)
   }))
-  default     = {}
+  default = {}
 }
 
 variable "admin_group_object_ids" {

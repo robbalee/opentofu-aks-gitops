@@ -1,8 +1,6 @@
-/**
- * # Base Infrastructure Components
- * 
- * Common infrastructure components for all environments
- */
+# Base Infrastructure Components
+# 
+# Common infrastructure components for all environments
 
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization

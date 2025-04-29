@@ -36,7 +36,7 @@ variable "address_space" {
 variable "subnet_prefixes" {
   description = "Address prefixes for the subnets"
   type        = map(string)
-  default     = {
+  default = {
     aks = "10.0.0.0/22"
     app = "10.0.4.0/24"
   }
@@ -45,7 +45,7 @@ variable "subnet_prefixes" {
 variable "subnet_names" {
   description = "Names of the subnets"
   type        = map(string)
-  default     = {
+  default = {
     aks = "snet-aks"
     app = "snet-app"
   }
@@ -78,12 +78,12 @@ variable "default_node_pool_vm_size" {
 
 variable "additional_node_pools" {
   description = "Additional node pools to create"
-  type        = map(object({
+  type = map(object({
     name       = string
     vm_size    = string
     node_count = number
     taints     = list(string)
     labels     = map(string)
   }))
-  default     = {}
+  default = {}
 }
