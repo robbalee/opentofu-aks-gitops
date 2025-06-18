@@ -29,3 +29,4 @@ Thumbs.db
 *.log
 
 .devcontainer
+.github/app_secret.json
