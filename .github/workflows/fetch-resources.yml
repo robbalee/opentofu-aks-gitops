@@ -1,0 +1,34 @@
+# Prerequisites:
+#   1. Create a service principal:
+#      az ad sp create-for-rbac --sdk-auth > sp.json
+#   2. In GitHub repo settings → Secrets → New repository secret:
+#      Name: AZURE_CREDENTIALS; Value: contents of sp.json
+name: Fetch Azure Resources
+
+on:
+  workflow_dispatch:
+    inputs:
+      resource_group:
+        description: 'Azure resource group name'
+        required: true
+        default: ''
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Azure Login
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+    - name: Fetch resources from resource group
+      run: |
+        echo "Fetching resources in RG: ${{ github.event.inputs.resource_group }}"
+        az resource list \
+          --resource-group ${{ github.event.inputs.resource_group }} \
+          --output table
