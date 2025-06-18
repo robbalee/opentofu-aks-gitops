@@ -1,8 +1,3 @@
-# Prerequisites:
-#   1. Create a service principal:
-#      az ad sp create-for-rbac --sdk-auth > sp.json
-#   2. In GitHub repo settings → Secrets → New repository secret:
-#      Name: AZURE_CREDENTIALS; Value: contents of sp.json
 name: Fetch Azure Resources
 
 on:
